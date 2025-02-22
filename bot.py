@@ -14,54 +14,38 @@ app = Client(
     session_string=SESSION_STRING
 )
 
-@app.on_message(filters.command(["run", "approve"], [".", "/"]))                     
-async def approve(client, message):
+async def send_welcome(client, user):
+    try:
+        welcome_msg = f"👋 Hello {user.first_name}!\n\nWelcome to our community! Please read the rules and enjoy your stay."
+        await client.send_message(
+            chat_id=user.id,
+            text=welcome_msg
+        )
+    except FloodWait as e:
+        await asyncio.sleep(e.value)
+        return await send_welcome(client, user)
+    except Exception as e:
+        logging.error(f"Couldn't send welcome message to {user.id}: {e}")
+
+@app.on_message(filters.command(["run", "approve"], [".", "/"]))
+async def approve_members(client, message):
     await message.delete()
     
     try:
-        offset = 0
-        limit = 200
-        while True:
+        async for user in client.get_chat_join_requests(AUTH_GROUP):
             try:
-                response = await client.get_chat_join_requests(
-                    chat_id=AUTH_GROUP,
-                    offset=offset,
-                    limit=limit
-                )
+                await client.approve_chat_join_request(AUTH_GROUP, user.id)
+                await send_welcome(client, user)
+                
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                continue
+                await client.approve_chat_join_request(AUTH_GROUP, user.id)
+                await send_welcome(client, user)
+                
             except Exception as e:
-                logging.error(str(e))
-                break
-
-            if not response.users:
-                break
-
-            for user in response.users:
-                try:
-                    # Approve join request
-                    await client.approve_chat_join_request(
-                        chat_id=AUTH_GROUP,
-                        user_id=user.id
-                    )
-                    # Send welcome message
-                    welcome_msg = f"🌟 Welcome {user.mention()} to the group!\n\nPlease read the rules and enjoy your stay!"
-                    await client.send_message(
-                        chat_id=AUTH_GROUP,
-                        text=welcome_msg
-                    )
-                except FloodWait as e:
-                    await asyncio.sleep(e.value)
-                    # Retry after waiting
-                    await client.approve_chat_join_request(AUTH_GROUP, user.id)
-                    await client.send_message(AUTH_GROUP, welcome_msg)
-                except Exception as e:
-                    logging.error(f"Error processing {user.id}: {e}")
-
-            offset += len(response.users)
+                logging.error(f"Error approving {user.id}: {e}")
 
     except Exception as e:
-        logging.error(str(e))
+        logging.error(f"Join request error: {e}")
 
 app.run()
