@@ -6,6 +6,7 @@ API_ID = os.getenv("API_ID", "27620678")
 API_HASH = os.getenv("API_HASH", "cf05b46b4fc0f90a65731f8c96e66bfd")
 SESSION_STRING = os.getenv("SESSION_STRING", "AQGldUYANCUECmeJpf8zs7LE-HZYLJkU9IyBbvNGB3J1d8oTJl7iZlVOWzV144vKdQYoBCT_KSLSxAtgoX3OfizcHzfnMk7PxW2Xs-2xK6JMTblQ3kIFs3c5i6LiNm6R1HRTnjBQNSkRPhCNUXj05GZXKYmjsf_v2jbVrL4hU4-LUTqbHZnJIzwISeKRgVEWoz1y-Auh6gGDyAqX7vVgIQF6QJFmORucSFLlEkGcdU0ILDkcTiqJeby_o_9NLtLlZMdsMUsxWYD4XvL4NEd_MQuJsnFNHhqlCPGyHQfgjiaGejbFIk56n_-VxfJtS1ZxAaIyXJ3teetG0vgFvB3EGxAsqa0KgAAAAAGbt_pPAA")
 AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002417831745"))
+CHANNEL_ID = -1002347041324  # New channel ID to forward posts from
 
 app = Client(
     "JoinAccepter",
@@ -14,18 +15,21 @@ app = Client(
     session_string=SESSION_STRING
 )
 
-async def send_welcome(client, user):
+async def forward_channel_post(client, user):
     try:
-        welcome_msg = f"👋 Hello {user.first_name}!\n\nWelcome to our community! Please read the rules and enjoy your stay."
-        await client.send_message(
-            chat_id=user.id,
-            text=welcome_msg
-        )
+        # Get the latest message from the channel
+        async for message in client.get_chat_history(CHANNEL_ID, limit=1):
+            # Forward the message to the user
+            await client.forward_messages(
+                chat_id=user.id,
+                from_chat_id=CHANNEL_ID,
+                message_ids=message.id
+            )
     except FloodWait as e:
         await asyncio.sleep(e.value)
-        return await send_welcome(client, user)
+        return await forward_channel_post(client, user)
     except Exception as e:
-        logging.error(f"Couldn't send welcome message to {user.id}: {e}")
+        logging.error(f"Couldn't forward message to {user.id}: {e}")
 
 @app.on_message(filters.command(["run", "approve"], [".", "/"]))
 async def approve_members(client, message):
@@ -35,15 +39,15 @@ async def approve_members(client, message):
         # Iterate through join requests
         async for join_request in client.get_chat_join_requests(AUTH_GROUP):
             try:
-                # Approve the request using user_id from ChatJoinRequest object
+                # Approve the request
                 await client.approve_chat_join_request(AUTH_GROUP, join_request.user.id)
-                # Send welcome message to the user
-                await send_welcome(client, join_request.user)
+                # Forward channel post to the user
+                await forward_channel_post(client, join_request.user)
                 
             except FloodWait as e:
                 await asyncio.sleep(e.value)
                 await client.approve_chat_join_request(AUTH_GROUP, join_request.user.id)
-                await send_welcome(client, join_request.user)
+                await forward_channel_post(client, join_request.user)
                 
             except Exception as e:
                 logging.error(f"Error approving {join_request.user.id}: {e}")
