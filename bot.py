@@ -32,18 +32,21 @@ async def approve_members(client, message):
     await message.delete()
     
     try:
-        async for user in client.get_chat_join_requests(AUTH_GROUP):
+        # Iterate through join requests
+        async for join_request in client.get_chat_join_requests(AUTH_GROUP):
             try:
-                await client.approve_chat_join_request(AUTH_GROUP, user.id)
-                await send_welcome(client, user)
+                # Approve the request using user_id from ChatJoinRequest object
+                await client.approve_chat_join_request(AUTH_GROUP, join_request.user.id)
+                # Send welcome message to the user
+                await send_welcome(client, join_request.user)
                 
             except FloodWait as e:
                 await asyncio.sleep(e.value)
-                await client.approve_chat_join_request(AUTH_GROUP, user.id)
-                await send_welcome(client, user)
+                await client.approve_chat_join_request(AUTH_GROUP, join_request.user.id)
+                await send_welcome(client, join_request.user)
                 
             except Exception as e:
-                logging.error(f"Error approving {user.id}: {e}")
+                logging.error(f"Error approving {join_request.user.id}: {e}")
 
     except Exception as e:
         logging.error(f"Join request error: {e}")
