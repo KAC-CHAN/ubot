@@ -1,4 +1,5 @@
-from telethon import TelegramClient, functions, types
+from telethon import TelegramClient, functions
+from telethon.tl.types import ChannelParticipantsRequests
 import asyncio
 
 # Configuration
@@ -10,16 +11,15 @@ WELCOME_MESSAGE = "Welcome to the channel! We're glad to have you here."
 
 
 async def main():
-    # Initialize the Telegram client
     client = TelegramClient('session_name', API_ID, API_HASH)
     await client.start(bot_token=BOT_TOKEN)
 
     while True:
         try:
-            # Retrieve pending join requests
+            # Fetch pending join requests
             pending_requests = await client(functions.channels.GetParticipantsRequest(
                 channel=CHANNEL_ID,
-                filter=types.ChannelParticipantsRequests(),
+                filter=ChannelParticipantsRequests(),
                 offset=0,
                 limit=100
             ))
@@ -34,7 +34,7 @@ async def main():
                     ))
                     print(f"Approved user {participant.user_id}")
 
-                    # Send a welcome message (if possible)
+                    # Send welcome message (if possible)
                     try:
                         await client.send_message(
                             participant.user_id,
@@ -51,7 +51,6 @@ async def main():
 
         except Exception as e:
             print(f"An error occurred: {e}")
-            # Retry in case of an error
             await asyncio.sleep(10)
 
 if __name__ == '__main__':
