@@ -1,40 +1,58 @@
-from pyrogram import Client, filters
-from pyrogram.types import ChatJoinRequest
+import requests
+import time
 
-# Replace these values with your own
-api_id = 27620678
-api_hash = "cf05b46b4fc0f90a65731f8c96e66bfd"
-bot_token = "7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU"
-channel_id = -1002366680029  # Replace with your channel ID (must be negative)
+# Configuration
+BOT_TOKEN = "7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU"
+CHANNEL_ID = "-1002366680029"  # Must be string with -100 prefix
+WELCOME_MESSAGE = "Welcome to our channel! 🎉"
 
-app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
+def get_pending_requests():
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatJoinRequests"
+    params = {
+        "chat_id": CHANNEL_ID,
+        "limit": 200
+    }
+    response = requests.get(url, params=params).json()
+    return response.get('result', {}).get('join_requests', [])
 
-async def approve_pending_requests():
-    async with app:
-        # Get all pending join requests
-        async for request in app.get_chat_join_requests(channel_id):
-            try:
-                # Approve the request
-                await app.approve_chat_join_request(channel_id, request.user.id)
-                print(f"Approved user: {request.user.username or request.user.id}")
+def approve_user(user_id):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/approveChatJoinRequest"
+    params = {
+        "chat_id": CHANNEL_ID,
+        "user_id": user_id
+    }
+    return requests.post(url, params=params).json()
 
-                # Send welcome message
-                await app.send_message(
-                    chat_id=request.user.id,
-                    text="Welcome to the channel! 🎉\n\nThank you for joining our community!"
-                )
-            except Exception as e:
-                print(f"Error processing user {request.user.id}: {e}")
+def send_welcome(user_id):
+    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+    params = {
+        "chat_id": user_id,
+        "text": WELCOME_MESSAGE
+    }
+    return requests.post(url, params=params).json()
 
-@app.on_chat_join_request()
-async def handle_approval(client, request: ChatJoinRequest):
-    # Auto-approve new requests and send welcome message
-    await request.approve()
-    await client.send_message(
-        chat_id=request.user_chat.id,
-        text="Welcome to the channel! 🎉\n\nThank you for joining our community!"
-    )
+def process_requests():
+    pending_requests = get_pending_requests()
+    
+    for request in pending_requests:
+        user_id = request['user_chat']['id']
+        print(f"Processing user: {user_id}")
+        
+        # Approve request
+        approval_result = approve_user(user_id)
+        if not approval_result.get('ok'):
+            print(f"Failed to approve {user_id}: {approval_result}")
+            continue
+        
+        # Send welcome message
+        message_result = send_welcome(user_id)
+        if not message_result.get('ok'):
+            print(f"Failed to message {user_id}: {message_result}")
+        
+        # Add delay to avoid rate limits
+        time.sleep(1)
 
 if __name__ == "__main__":
-    print("Starting bot...")
-    app.run(approve_pending_requests())
+    print("Starting approval process...")
+    process_requests()
+    print("Process completed!")
