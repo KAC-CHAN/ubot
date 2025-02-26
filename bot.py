@@ -1,58 +1,35 @@
-import requests
-import time
 
-# Configuration
-BOT_TOKEN = "7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU"
-CHANNEL_ID = "-1002366680029"  # Must be string with -100 prefix
-WELCOME_MESSAGE = "Welcome to our channel! 🎉"
+import telebot
 
-def get_pending_requests():
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/getChatJoinRequests"
-    params = {
-        "chat_id": CHANNEL_ID,
-        "limit": 200
-    }
-    response = requests.get(url, params=params).json()
-    return response.get('result', {}).get('join_requests', [])
+# Replace with your bot token
+BOT_TOKEN = '7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU'
 
-def approve_user(user_id):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/approveChatJoinRequest"
-    params = {
-        "chat_id": CHANNEL_ID,
-        "user_id": user_id
-    }
-    return requests.post(url, params=params).json()
+# Replace with your channel username or ID
+CHANNEL_USERNAME = '-1002366680029'
 
-def send_welcome(user_id):
-    url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    params = {
-        "chat_id": user_id,
-        "text": WELCOME_MESSAGE
-    }
-    return requests.post(url, params=params).json()
+# Initialize the bot
+bot = telebot.TeleBot(BOT_TOKEN)
 
-def process_requests():
-    pending_requests = get_pending_requests()
-    
+# Function to approve join requests and send welcome message
+def approve_join_requests():
+    # Get the list of pending join requests
+    pending_requests = bot.get_chat_join_requests(CHANNEL_USERNAME)
+
     for request in pending_requests:
-        user_id = request['user_chat']['id']
-        print(f"Processing user: {user_id}")
-        
-        # Approve request
-        approval_result = approve_user(user_id)
-        if not approval_result.get('ok'):
-            print(f"Failed to approve {user_id}: {approval_result}")
-            continue
-        
-        # Send welcome message
-        message_result = send_welcome(user_id)
-        if not message_result.get('ok'):
-            print(f"Failed to message {user_id}: {message_result}")
-        
-        # Add delay to avoid rate limits
-        time.sleep(1)
+        user_id = request.user.id
+        username = request.user.username
 
-if __name__ == "__main__":
-    print("Starting approval process...")
-    process_requests()
-    print("Process completed!")
+        # Approve the join request
+        bot.approve_chat_join_request(CHANNEL_USERNAME, user_id)
+
+        # Send a welcome message to the user
+        welcome_message = f"Welcome to the channel, @{username}! We're glad to have you here."
+        bot.send_message(user_id, welcome_message)
+
+        print(f"Approved join request for user: @{username}")
+
+# Run the function to approve join requests
+approve_join_requests()
+
+# Start polling (this is necessary to keep the bot running)
+bot.polling()
