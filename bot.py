@@ -1,60 +1,40 @@
-from telegram import Update
-from telegram.ext import Application, ContextTypes, CommandHandler, ChatJoinRequestHandler
+from pyrogram import Client, filters
+from pyrogram.types import ChatJoinRequest
 
-# Replace with your channel ID (e.g., -1001234567890)
-CHANNEL_ID = "-1002366680029"
+# Replace these values with your own
+api_id = YOUR_API_ID
+api_hash = "YOUR_API_HASH"
+bot_token = "YOUR_BOT_TOKEN"
+channel_id = -1001234567890  # Replace with your channel ID (must be negative)
 
-async def approve_join_requests(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Check if the command is sent in private chat
-    if update.message.chat.type != "private":
-        await update.message.reply_text("This command can only be used in private chat with the bot.")
-        return
+app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
-    # Fetch pending join requests for the channel
-    try:
-        join_requests = await context.bot.get_chat_join_requests(chat_id=CHANNEL_ID)
-    except Exception as e:
-        await update.message.reply_text(f"Failed to fetch join requests: {e}")
-        return
+async def approve_pending_requests():
+    async with app:
+        # Get all pending join requests
+        async for request in app.get_chat_join_requests(channel_id):
+            try:
+                # Approve the request
+                await app.approve_chat_join_request(channel_id, request.user.id)
+                print(f"Approved user: {request.user.username or request.user.id}")
 
-    # Approve each pending join request
-    approved_users = []
-    for request in join_requests:
-        try:
-            await context.bot.approve_chat_join_request(chat_id=CHANNEL_ID, user_id=request.user.id)
-            approved_users.append(request.user.full_name)
-            # Send welcome message
-            await context.bot.send_message(
-                chat_id=request.user.id,
-                text="🎉 Welcome to our channel! Thank you for joining us."
-            )
-        except Exception as e:
-            print(f"Failed to approve {request.user.full_name}: {e}")
+                # Send welcome message
+                await app.send_message(
+                    chat_id=request.user.id,
+                    text="Welcome to the channel! 🎉\n\nThank you for joining our community!"
+                )
+            except Exception as e:
+                print(f"Error processing user {request.user.id}: {e}")
 
-    # Send confirmation to admin
-    if approved_users:
-        await update.message.reply_text(f"Approved {len(approved_users)} users: {', '.join(approved_users)}")
-    else:
-        await update.message.reply_text("No pending join requests to approve.")
-
-async def handle_join_request(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Automatically approve new join requests
-    await update.chat_join_request.approve()
-    await context.bot.send_message(
-        chat_id=update.chat_join_request.from_user.id,
-        text="🎉 Welcome to our channel! Thank you for joining us."
+@app.on_chat_join_request()
+async def handle_approval(client, request: ChatJoinRequest):
+    # Auto-approve new requests and send welcome message
+    await request.approve()
+    await client.send_message(
+        chat_id=request.user_chat.id,
+        text="Welcome to the channel! 🎉\n\nThank you for joining our community!"
     )
 
 if __name__ == "__main__":
-    # Initialize bot with your token
-    application = Application.builder().token("7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU").build()
-    
-    # Add command handler for /approve
-    application.add_handler(CommandHandler("approve", approve_join_requests))
-    
-    # Add handler for new join requests
-    application.add_handler(ChatJoinRequestHandler(handle_join_request))
-    
-    # Start the bot
-    print("Bot is running...")
-    application.run_polling()
+    print("Starting bot...")
+    app.run(approve_pending_requests())
