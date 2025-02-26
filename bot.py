@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 API_ID = os.getenv("API_ID", "27620678")
 API_HASH = os.getenv("API_HASH", "cf05b46b4fc0f90a65731f8c96e66bfd")
 SESSION_STRING = os.getenv("SESSION_STRING", "BQGWoBcAhtPT-llLAXrQY_WT3TemM5DAk6jvf3aEU7hj_p7mYEr3qver4pgxwMcxe_qnBa3AsRh1PbeD2KcSabQx_WX1KfZHizU0Dcne_c5d_d_OLg-a4z6s_FA6Mz4PgYI7qMBaJFqjBx0kDv8NGVsx5F2cyVAhOK8xZeebsaZ2kvkNi2xgF7FieN2sRbKoIj6jSSLa1LRT8erJXFcjy2GCSO6hHnWfpMr8aUTU52JlOpYMEEDa8f8o7kU0S_o0LlUg_81ccYP-AYDso7BqEnH_sSsGKrh-EdpIJPnCV6X6rqkgHcYOsfkhkQeKlTO98FL_JN-KiCiKeOH2Owv3D1GCadJGtgAAAAG_UtceAA")
-AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002411849703"))
+AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002456518234"))
 CHANNEL_ID = -1002347041324  # Channel to forward from
 
 # Flood control parameters
