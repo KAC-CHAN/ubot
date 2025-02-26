@@ -2,10 +2,10 @@ from pyrogram import Client, filters
 from pyrogram.types import ChatJoinRequest
 
 # Replace these values with your own
-api_id = YOUR_API_ID
-api_hash = "YOUR_API_HASH"
-bot_token = "YOUR_BOT_TOKEN"
-channel_id = -1001234567890  # Replace with your channel ID (must be negative)
+api_id = 27620678
+api_hash = "cf05b46b4fc0f90a65731f8c96e66bfd"
+bot_token = "7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU"
+channel_id = -1002366680029  # Replace with your channel ID (must be negative)
 
 app = Client("my_bot", api_id=api_id, api_hash=api_hash, bot_token=bot_token)
 
