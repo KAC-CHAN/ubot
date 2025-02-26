@@ -2,11 +2,12 @@ from telethon import TelegramClient, events
 from telethon.tl.functions.channels import EditBannedRequest
 from telethon.tl.types import ChatBannedRights
 
+
 # Replace these with your own values
-API_ID = 'your_api_id'
-API_HASH = 'your_api_hash'
-BOT_TOKEN = 'your_bot_token'
-CHANNEL_ID = 'your_channel_id'  # Replace with your channel's ID
+API_ID = '27620678'
+API_HASH = 'cf05b46b4fc0f90a65731f8c96e66bfd'
+BOT_TOKEN = '7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU'
+CHANNEL_ID = -1002366680029 
 
 client = TelegramClient('bot', API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
