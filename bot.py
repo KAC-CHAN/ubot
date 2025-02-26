@@ -1,57 +1,21 @@
-from telethon import TelegramClient, functions
-from telethon.tl.types import ChannelParticipantsRequests
-import asyncio
+from pyrogram import Client, filters
+import os
 
-# Configuration
+# Set environment variables or replace with actual values
 API_ID = '27620678'
 API_HASH = 'cf05b46b4fc0f90a65731f8c96e66bfd'
 BOT_TOKEN = '7715898810:AAFeqS1E2esqeM93R3esP8hPUsXRGxyttQU'
 CHANNEL_ID = -1002366680029 # Use channel ID or username (e.g., @channel_username)
-WELCOME_MESSAGE = "Welcome to the channel! We're glad to have you here."
 
+app = Client("welcome_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-async def main():
-    client = TelegramClient('session_name', API_ID, API_HASH)
-    await client.start(bot_token=BOT_TOKEN)
-
-    while True:
+@app.on_message(filters.chat(CHANNEL_ID) & filters.new_chat_members)
+async def send_welcome_message(_, message):
+    for user in message.new_chat_members:
         try:
-            # Fetch pending join requests
-            pending_requests = await client(functions.channels.GetParticipantsRequest(
-                channel=CHANNEL_ID,
-                filter=ChannelParticipantsRequests(),
-                offset=0,
-                limit=100
-            ))
-
-            # Process each pending request
-            for participant in pending_requests.participants:
-                try:
-                    # Approve the join request
-                    await client(functions.channels.ApproveChannelJoinerRequest(
-                        channel=CHANNEL_ID,
-                        user_id=participant.user_id
-                    ))
-                    print(f"Approved user {participant.user_id}")
-
-                    # Send welcome message (if possible)
-                    try:
-                        await client.send_message(
-                            participant.user_id,
-                            WELCOME_MESSAGE
-                        )
-                        print(f"Welcome message sent to {participant.user_id}")
-                    except Exception as e:
-                        print(f"Failed to send message to {participant.user_id}: {e}")
-                except Exception as e:
-                    print(f"Failed to approve user {participant.user_id}: {e}")
-
-            # Wait 60 seconds before checking again
-            await asyncio.sleep(60)
-
+            await app.send_message(user.id, "Welcome to our channel! Thank you for joining.")
         except Exception as e:
-            print(f"An error occurred: {e}")
-            await asyncio.sleep(10)
+            print(f"Error sending message to {user.id}: {e}")
 
-if __name__ == '__main__':
-    asyncio.run(main())
+if __name__ == "__main__":
+    app.run()
