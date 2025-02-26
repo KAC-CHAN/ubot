@@ -1,5 +1,7 @@
-from pyrogram import Client, filters
-from pyrogram.types import ChatJoinRequest, Message
+
+
+from pyrogram import Client
+from pyrogram.types import ChatJoinRequest
 
 # Replace these with your own values
 API_ID = '27620678'
@@ -9,15 +11,23 @@ CHANNEL_ID = -1002366680029  # Replace with your channel ID (including the -100 
 
 app = Client("my_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# Function to approve join requests and send a welcome message
-@app.on_chat_join_request()
-async def approve_join_request(client: Client, chat_join_request: ChatJoinRequest):
-    # Approve the join request
-    await client.approve_chat_join_request(chat_join_request.chat.id, chat_join_request.from_user.id)
-    
-    # Send a welcome message to the user
-    welcome_message = f"Welcome {chat_join_request.from_user.mention} to the channel!"
-    await client.send_message(chat_join_request.from_user.id, welcome_message)
+async def process_pending_requests():
+    async with app:
+        # Get all pending join requests
+        async for request in app.get_chat_join_requests(CHANNEL_ID):
+            try:
+                # Approve existing request
+                await app.approve_chat_join_request(CHANNEL_ID, request.user.id)
+                
+                # Send welcome message
+                await app.send_message(
+                    request.user.id,
+                    "🎉 Welcome to our channel! Your request was approved."
+                )
+                print(f"Approved and welcomed user: {request.user.id}")
+                
+            except Exception as e:
+                print(f"Error processing {request.user.id}: {e}")
 
-# Start the bot
-app.run()
+# Run the script
+app.run(process_pending_requests())
