@@ -1,18 +1,4 @@
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait
-import os, asyncio, logging, random
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-API_ID = os.getenv("API_ID", "")
-API_HASH = os.getenv("API_HASH", "")
-
-from pyrogram import Client, filters
 from pyrogram.types import ChatJoinRequest, Message
 
 # Replace these with your own values
