@@ -5,7 +5,7 @@ import os, asyncio, logging
 API_ID = os.getenv("API_ID", "28628607")
 API_HASH = os.getenv("API_HASH", "6bd41297531e80866af2f7fcffca668d")
 SESSION_STRING = os.getenv("SESSION_STRING", "AQG01n8ATEucxytoxzD0vcqhjBetjNdR36Xer3Eq25fv5wL1FJXKJSCDhKQAS6O_tmIy5E0Gr7jsFXQQwj1_wDANjHqrTOARzTizITTozVrEIGxERPKH7mfw2YkqXuqip2CPN8gbrf2R1NBVp91uv08RwW-l-snfU3zuBuwpTfDKpGxvC97opRoUyq6GnOdln37RCxHLwwRw1DG6qDhQKtbNBfuhFGTFqN_QYhP1VsixH6mCQeyc5bgVt39WASclFOZ9PWdQVVqMB6F77RnOPHp4oMYmlf_uRFi_cR4OBSv2JEfzzyjfaESgfbLtxDp5V0VVpJzQKEJtyrdvQWq-hCAskvthLAAAAAGVIO1jAA")
-AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002390519815"))
+AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002471668046"))
 CHANNEL_ID = -1002347041324  # New channel ID to forward posts from
 
 app = Client(
