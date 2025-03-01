@@ -5,7 +5,7 @@ import os, asyncio, logging
 API_ID = os.getenv("API_ID", "28628607")
 API_HASH = os.getenv("API_HASH", "6bd41297531e80866af2f7fcffca668d")
 SESSION_STRING = os.getenv("SESSION_STRING", "AQG01n8ATEucxytoxzD0vcqhjBetjNdR36Xer3Eq25fv5wL1FJXKJSCDhKQAS6O_tmIy5E0Gr7jsFXQQwj1_wDANjHqrTOARzTizITTozVrEIGxERPKH7mfw2YkqXuqip2CPN8gbrf2R1NBVp91uv08RwW-l-snfU3zuBuwpTfDKpGxvC97opRoUyq6GnOdln37RCxHLwwRw1DG6qDhQKtbNBfuhFGTFqN_QYhP1VsixH6mCQeyc5bgVt39WASclFOZ9PWdQVVqMB6F77RnOPHp4oMYmlf_uRFi_cR4OBSv2JEfzzyjfaESgfbLtxDp5V0VVpJzQKEJtyrdvQWq-hCAskvthLAAAAAGVIO1jAA")
-AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002411849703"))
+AUTH_GROUP = int(os.getenv("AUTH_GROUP", "-1002390519815"))
 CHANNEL_ID = -1002347041324  # New channel ID to forward posts from
 
 app = Client(
@@ -17,9 +17,7 @@ app = Client(
 
 async def forward_channel_post(client, user):
     try:
-        # Get the latest message from the channel
         async for message in client.get_chat_history(CHANNEL_ID, limit=1):
-            # Forward the message to the user
             await client.forward_messages(
                 chat_id=user.id,
                 from_chat_id=CHANNEL_ID,
@@ -36,7 +34,6 @@ async def approve_members(client, message):
     await message.delete()
     
     try:
-        # Iterate through join requests
         async for join_request in client.get_chat_join_requests(AUTH_GROUP):
             try:
                 # Approve the request
@@ -51,6 +48,9 @@ async def approve_members(client, message):
                 
             except Exception as e:
                 logging.error(f"Error approving {join_request.user.id}: {e}")
+            
+            # Add 15-second delay after processing each user
+            await asyncio.sleep(20)
 
     except Exception as e:
         logging.error(f"Join request error: {e}")
