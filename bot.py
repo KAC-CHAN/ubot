@@ -1,5 +1,5 @@
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait, RetryAfter
+from pyrogram.errors import FloodWait
 import os, asyncio, logging
 
 API_ID = os.getenv("API_ID", "28628607")
@@ -31,8 +31,8 @@ async def forward_with_retry(client, message_ids, retry_count=0):
             message_ids=message_ids
         )
         return True
-    except (FloodWait, RetryAfter) as e:
-        wait_time = e.value if hasattr(e, 'value') else 10
+    except FloodWait as e:
+        wait_time = e.value
         logging.warning(f"Rate limited. Waiting {wait_time} seconds...")
         await asyncio.sleep(wait_time)
         if retry_count < max_retries:
