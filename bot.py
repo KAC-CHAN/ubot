@@ -15,6 +15,7 @@ DELAY_BETWEEN_BATCHES = 4  # Seconds between batches (4s * 30 batches = 120s)
 MAX_RETRIES = 5  # Max retries for server errors
 
 
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
@@ -26,7 +27,7 @@ logging.basicConfig(
 )
 
 app = Client(
-    "FixedForwardBot",
+    "FinalForwardBot",
     api_id=API_ID,
     api_hash=API_HASH,
     session_string=SESSION_STRING
@@ -35,15 +36,12 @@ app = Client(
 def get_last_offset():
     try:
         with open('last_offset.txt', 'r') as f:
-            offset = int(f.read().strip())
-            logging.info(f"Resuming from offset ID: {offset}")
-            return offset
+            return int(f.read().strip())
     except FileNotFoundError:
-        logging.info("Starting from latest messages")
-        return 0  # Start from first message
+        return None
     except Exception as e:
         logging.error(f"Offset error: {str(e)}")
-        return 0
+        return None
 
 def save_last_offset(offset_id):
     try:
@@ -51,6 +49,14 @@ def save_last_offset(offset_id):
             f.write(str(offset_id))
     except Exception as e:
         logging.error(f"Offset save failed: {str(e)}")
+
+async def get_initial_offset():
+    try:
+        async for msg in app.get_chat_history(SOURCE_CHANNEL, limit=1):
+            return msg.id + 1  # Start from latest message
+    except Exception as e:
+        logging.error(f"Initial offset error: {str(e)}")
+        return None
 
 async def forward_batch_with_retry(client, message_ids):
     retry_count = 0
@@ -65,17 +71,13 @@ async def forward_batch_with_retry(client, message_ids):
         except RPCError as e:
             if "WORKER_BUSY_TOO_LONG_RETRY" in str(e):
                 wait_time = math.pow(2, retry_count)
-                logging.warning(f"Server busy, retry {retry_count+1}/{MAX_RETRIES} in {wait_time}s")
                 await asyncio.sleep(wait_time)
                 retry_count += 1
             else:
-                logging.error(f"RPC Error: {str(e)}")
                 return False
         except FloodWait as e:
-            logging.warning(f"FloodWait: Sleeping {e.value}s")
             await asyncio.sleep(e.value)
-        except Exception as e:
-            logging.error(f"Forward error: {str(e)}")
+        except Exception:
             return False
     return False
 
@@ -83,46 +85,51 @@ async def forward_batch_with_retry(client, message_ids):
 async def start_forwarding(client, message):
     await message.delete()
     
-    offset_id = get_last_offset()
+    offset_id = get_last_offset() or await get_initial_offset()
+    if not offset_id:
+        logging.error("Failed to initialize offset")
+        return
+
     total_forwarded = 0
-    batch_count = 0
 
     while True:
         try:
-            # Get message batch with proper offset handling
+            # Fetch messages older than current offset
             messages = []
             async for msg in app.get_chat_history(
                 chat_id=SOURCE_CHANNEL,
                 limit=BATCH_SIZE,
-                offset_id=offset_id if offset_id > 0 else None
+                offset_id=offset_id
             ):
                 messages.append(msg)
                 if len(messages) >= BATCH_SIZE:
                     break
 
             if not messages:
-                logging.info("No more messages to forward")
+                logging.info("Finished forwarding all messages")
                 break
 
-            # Store IDs in reverse chronological order
+            # Process messages in chronological order
             messages.reverse()
             message_ids = [msg.id for msg in messages]
-            new_offset = messages[-1].id - 1  # Ensure proper pagination
+            new_offset = messages[0].id  # Oldest message in batch
 
             if await forward_batch_with_retry(client, message_ids):
                 total_forwarded += len(messages)
                 save_last_offset(new_offset)
-                logging.info(f"Forwarded {len(messages)} messages (Total: {total_forwarded})")
+                logging.info(f"Forwarded {len(messages)} messages | Total: {total_forwarded}")
                 await asyncio.sleep(DELAY_BETWEEN_BATCHES)
                 offset_id = new_offset
             else:
-                logging.error("Stopping due to persistent errors")
+                logging.warning("Saving progress and exiting due to errors")
+                save_last_offset(offset_id)
                 break
 
         except Exception as e:
             logging.error(f"Critical error: {str(e)}")
+            save_last_offset(offset_id)
             break
 
-    logging.info(f"Finished forwarding. Total messages: {total_forwarded}")
+    logging.info(f"Total messages forwarded: {total_forwarded}")
 
 app.run()
