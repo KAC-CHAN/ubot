@@ -5,8 +5,8 @@ import os, asyncio, logging
 API_ID = os.getenv("API_ID", "28628607")
 API_HASH = os.getenv("API_HASH", "6bd41297531e80866af2f7fcffca668d")
 SESSION_STRING = os.getenv("SESSION_STRING", "BQG3smoAEvxBmumqB4J5HL5VoybZpYzBLBXOs7YCqEq1yggUY_wfJTpgaDJlnjSJg7Yzs8jKuWec0D08ys8bDZ3zLhbcNHtjAs7GxlxTay_3f2VBp-wNrQRemY3fPk9ISUxmyU7RTa7ZCxic38Yc516XqlM_mSWLFXoVPMrPDFDSe7-yBUKjflzeZUGgCx9Wj9YBDF3L6Vat-T1CSAM_dtLLZAuMiKBmTIFXFdg5CojO16UvyPtka9_pvAFLTUIZNfKP05DuNIyceuWQpOywHpVL4g9KDLvUq38VratsZHLdKrW-XviNh6f-vZxeVjSOGQ3WVuMr5cGIeyub8vqOvmynYCAf9wAAAAHOKJRtAA")
-SOURCE_CHANNEL = -1002347041324  # Channel to forward FROM
-TARGET_CHANNEL = -1001234567890  # Channel to forward TO
+SOURCE_CHANNEL = -1002135471903  # Channel to forward FROM
+TARGET_CHANNEL = -1002659050639  # Channel to forward TO
 
 app = Client(
     "ForwardBot",
