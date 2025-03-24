@@ -9,11 +9,8 @@ API_HASH = os.getenv("API_HASH", "6bd41297531e80866af2f7fcffca668d")
 SESSION_STRING = os.getenv("SESSION_STRING", "BQG3smoAEvxBmumqB4J5HL5VoybZpYzBLBXOs7YCqEq1yggUY_wfJTpgaDJlnjSJg7Yzs8jKuWec0D08ys8bDZ3zLhbcNHtjAs7GxlxTay_3f2VBp-wNrQRemY3fPk9ISUxmyU7RTa7ZCxic38Yc516XqlM_mSWLFXoVPMrPDFDSe7-yBUKjflzeZUGgCx9Wj9YBDF3L6Vat-T1CSAM_dtLLZAuMiKBmTIFXFdg5CojO16UvyPtka9_pvAFLTUIZNfKP05DuNIyceuWQpOywHpVL4g9KDLvUq38VratsZHLdKrW-XviNh6f-vZxeVjSOGQ3WVuMr5cGIeyub8vqOvmynYCAf9wAAAAHOKJRtAA")
 SOURCE_CHANNEL = -1002135471903  # Channel to forward FROM
 TARGET_CHANNEL = -1002659050639  # Channel to forward TO
-
-
 BATCH_SIZE = 90
 DELAY_BETWEEN_BATCHES = 120  # 2 minutes in seconds
-
 
 
 # Configure logging
@@ -39,8 +36,11 @@ def get_last_offset():
             offset = int(f.read().strip())
             logging.info(f"Resuming from offset ID: {offset}")
             return offset
+    except FileNotFoundError:
+        logging.info("No offset file found, starting from latest messages")
+        return None  # Will fetch from newest messages
     except Exception as e:
-        logging.warning(f"No offset found, starting fresh: {str(e)}")
+        logging.error(f"Error reading offset: {str(e)}")
         return None
 
 def save_last_offset(offset_id):
@@ -85,7 +85,6 @@ async def handle_forward_command(client, message):
     await message.delete()
     
     if not await verify_channel_access():
-        logging.error("Aborting due to channel access issues")
         return
 
     offset_id = get_last_offset()
@@ -93,12 +92,16 @@ async def handle_forward_command(client, message):
 
     while True:
         try:
+            # Get chat history parameters
+            params = {
+                'chat_id': SOURCE_CHANNEL,
+                'limit': BATCH_SIZE
+            }
+            if offset_id is not None:
+                params['offset_id'] = offset_id
+
             messages = []
-            async for msg in app.get_chat_history(
-                chat_id=SOURCE_CHANNEL,
-                limit=BATCH_SIZE,
-                offset_id=offset_id
-            ):
+            async for msg in app.get_chat_history(**params):
                 messages.append(msg)
                 if len(messages) >= BATCH_SIZE:
                     break
@@ -107,15 +110,17 @@ async def handle_forward_command(client, message):
                 logging.info("No more messages to process")
                 break
 
+            # Store oldest message ID for next offset
+            new_offset = messages[-1].id
+
+            # Forward in chronological order
             messages.reverse()
             message_ids = [msg.id for msg in messages]
-            logging.info(f"Processing {len(message_ids)} messages")
 
             if await safe_forward(client, message_ids):
                 total_forwarded += len(message_ids)
-                new_offset = messages[-1].id
                 save_last_offset(new_offset)
-                logging.info(f"Waiting {DELAY_BETWEEN_BATCHES}s before next batch")
+                logging.info(f"Processed {len(message_ids)} messages. Total: {total_forwarded}")
                 await asyncio.sleep(DELAY_BETWEEN_BATCHES)
             else:
                 logging.error("Stopping due to forwarding failure")
@@ -125,6 +130,6 @@ async def handle_forward_command(client, message):
             logging.error(f"Processing error: {str(e)}")
             break
 
-    logging.info(f"Total messages forwarded: {total_forwarded}")
+    logging.info(f"Final total messages forwarded: {total_forwarded}")
 
 app.run()
