@@ -1,6 +1,8 @@
 from pyrogram import Client, filters
-from pyrogram.errors import FloodWait
-import os, asyncio, logging
+from pyrogram.errors import FloodWait, ChannelInvalid, ChannelPrivate
+import os
+import asyncio
+import logging
 
 API_ID = os.getenv("API_ID", "28628607")
 API_HASH = os.getenv("API_HASH", "6bd41297531e80866af2f7fcffca668d")
@@ -12,10 +14,16 @@ TARGET_CHANNEL = -1002659050639  # Channel to forward TO
 BATCH_SIZE = 90
 DELAY_BETWEEN_BATCHES = 120  # 2 minutes in seconds
 
+
+
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('forward.log'),
+        logging.StreamHandler()
+    ]
 )
 
 app = Client(
@@ -28,13 +36,33 @@ app = Client(
 def get_last_offset():
     try:
         with open('last_offset.txt', 'r') as f:
-            return int(f.read().strip())
-    except (FileNotFoundError, ValueError):
+            offset = int(f.read().strip())
+            logging.info(f"Resuming from offset ID: {offset}")
+            return offset
+    except Exception as e:
+        logging.warning(f"No offset found, starting fresh: {str(e)}")
         return None
 
 def save_last_offset(offset_id):
-    with open('last_offset.txt', 'w') as f:
-        f.write(str(offset_id))
+    try:
+        with open('last_offset.txt', 'w') as f:
+            f.write(str(offset_id))
+        logging.info(f"Saved new offset: {offset_id}")
+    except Exception as e:
+        logging.error(f"Failed to save offset: {str(e)}")
+
+async def verify_channel_access():
+    try:
+        await app.get_chat(SOURCE_CHANNEL)
+        await app.get_chat(TARGET_CHANNEL)
+        logging.info("Channel access verified")
+        return True
+    except (ChannelInvalid, ChannelPrivate) as e:
+        logging.error(f"Channel access error: {str(e)}")
+        return False
+    except Exception as e:
+        logging.error(f"Unexpected channel error: {str(e)}")
+        return False
 
 async def safe_forward(client, message_ids):
     try:
@@ -45,21 +73,26 @@ async def safe_forward(client, message_ids):
         )
         return True
     except FloodWait as e:
-        logging.warning(f"FloodWait detected: Sleeping {e.value} seconds")
+        logging.warning(f"FloodWait: Sleeping {e.value}s")
         await asyncio.sleep(e.value)
         return await safe_forward(client, message_ids)
     except Exception as e:
-        logging.error(f"Forwarding error: {str(e)}")
+        logging.error(f"Forward error: {str(e)}")
         return False
 
 @app.on_message(filters.command(["forward"], ["/", "!"]))
 async def handle_forward_command(client, message):
     await message.delete()
-    offset_id = get_last_offset()
     
+    if not await verify_channel_access():
+        logging.error("Aborting due to channel access issues")
+        return
+
+    offset_id = get_last_offset()
+    total_forwarded = 0
+
     while True:
         try:
-            # Fetch message batch
             messages = []
             async for msg in app.get_chat_history(
                 chat_id=SOURCE_CHANNEL,
@@ -71,31 +104,27 @@ async def handle_forward_command(client, message):
                     break
 
             if not messages:
-                logging.info("All messages processed successfully")
+                logging.info("No more messages to process")
                 break
 
-            # Prepare messages in chronological order
             messages.reverse()
             message_ids = [msg.id for msg in messages]
+            logging.info(f"Processing {len(message_ids)} messages")
 
-            # Forward with retry logic
             if await safe_forward(client, message_ids):
-                # Update offset to oldest message in current batch
-                offset_id = messages[-1].id
-                save_last_offset(offset_id)
-                
-                # Wait before next batch
-                logging.info(f"Processed {len(messages)} messages. Waiting {DELAY_BETWEEN_BATCHES} seconds...")
+                total_forwarded += len(message_ids)
+                new_offset = messages[-1].id
+                save_last_offset(new_offset)
+                logging.info(f"Waiting {DELAY_BETWEEN_BATCHES}s before next batch")
                 await asyncio.sleep(DELAY_BETWEEN_BATCHES)
             else:
-                logging.error("Stopping due to forwarding errors")
+                logging.error("Stopping due to forwarding failure")
                 break
 
-        except FloodWait as e:
-            logging.warning(f"FloodWait during processing: Sleeping {e.value} seconds")
-            await asyncio.sleep(e.value)
         except Exception as e:
-            logging.error(f"Critical error: {str(e)}")
+            logging.error(f"Processing error: {str(e)}")
             break
+
+    logging.info(f"Total messages forwarded: {total_forwarded}")
 
 app.run()
